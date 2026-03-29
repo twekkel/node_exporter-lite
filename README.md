@@ -4,7 +4,7 @@
 
 ## Introduction
 
-Ultra‑light drop‑in replacement for Prometheus [node_exporter](https://github.com/prometheus/node_exporter), written in [Nim](https://nim-lang.org) and compiled into a single static binary with zero external dependencies.
+An ultra‑light Prometheus [node_exporter](https://github.com/prometheus/node_exporter) replacement, written in [Nim](https://nim-lang.org). It compiles into a single static binary with zero external dependencies.
 
 A minimal, high‑performance implementation of the standard `node_exporter` metrics with extremely low memory and CPU usage. Ideal for resource‑constrained systems, embedded devices, and environments where a compact, easy‑to‑distribute exporter is required.
 
