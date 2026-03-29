@@ -1,5 +1,5 @@
 [README.md](https://github.com/user-attachments/files/26249566/README.md)
-# Node Exporter Light
+# Node Exporter Lite
 
 ## Introduction
 
@@ -19,6 +19,41 @@ A minimal, high‑performance implementation of the standard `node_exporter` met
 * **Lightweight Drop‑in Replacement:** Compatible with Prometheus’ standard node_exporter metrics, making it a seamless, ultra‑small alternative for resource‑constrained systems.
 
 ---
+
+## Official node_exporter vs this lite version
+
+| Aspect         | Node Exporter (official)       | node_exporter-lite          |
+| -------------- | ------------------------------ | --------------------------- |
+| Language       | Go                             | Nim                         |
+| Binary size    | ~22 MB                         | ~400 kB                     |
+| Footprint      | ~23 MB                         | < 1 MB                      |
+| Collectors     | Many (modular, configurable)   | fixed                       |
+| Configuration  | Extensive flags                | Little to none              |
+| Resource usage | Higher (depends on collectors) | Low and predictable         |
+| Scope          | Full system observability      | Core system metrics only    |
+| Complexity     | Higher                         | Very low                    |
+| Use case       | General-purpose monitoring     | Lightweight                 |
+
+### Equivalent configuration
+
+node_exporter-lite roughly provides the same core metrics as running the official Node Exporter with a minimal collector set:
+
+```
+node_exporter \
+  --collector.disable-defaults \
+  --collector.cpu \
+  --collector.diskstats \
+  --collector.entropy \
+  --collector.filefd \
+  --collector.filesystem \
+  --collector.loadavg \
+  --collector.meminfo \
+  --collector.netdev \
+  --collector.pressure \
+  --collector.stat \
+  --collector.time \
+  --collector.uname
+```
 
 ## Building
 

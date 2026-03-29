@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v5
+
+    - name: Build
+      run: |
+        podman build --target binary -o . .
+
+    - name: Test help / usage
+      run: ./node_exporter --help| grep "Node Exporter Lite"
+
+    - name: Start Daemon
+      run: |
+          ./node_exporter --web.listen-address=:9101 & 
+          echo $! > exporter.pid
+          sleep 2
+
+    - name: Run test - normal output
+      run: |
+          curl -fs http://localhost:9101/metrics
+
+    - name: Run test - compressed output
+      run: |
+          curl --compressed -Is http://localhost:9101/metrics | grep -i "content-encoding: gzip"
+
+    - name: Run test - loadavg
+      run: |
+          curl --compressed -s http://localhost:9101/metrics | grep -E "node_load15 [0-9]+.[0.9]+"
+
+    - name: Stop Daemon
+      if: always()
+      run: |
+        if [ -f exporter.pid ]; then
+          kill $(cat exporter.pid)
+            echo "Daemon gestopt."
+        fi
