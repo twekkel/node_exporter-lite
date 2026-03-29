@@ -31,6 +31,7 @@ A minimal, high‑performance implementation of the standard `node_exporter` met
 | Collectors     | Many (modular, configurable)   | fixed                       |
 | Configuration  | Extensive flags                | Little to none              |
 | Resource usage | Higher (depends on collectors) | Low and predictable         |
+| Platform       | Many *nix systems              | Linux only                  |
 | Scope          | Full system observability      | Core system metrics only    |
 | Complexity     | Higher                         | Very low                    |
 | Use case       | General-purpose monitoring     | Lightweight                 |
