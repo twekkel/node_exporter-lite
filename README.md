@@ -3,7 +3,7 @@
 
 ## Introduction
 
-Ultra‑light drop‑in replacement for Prometheus [node_exporter](https://github.com/prometheus/node_exporter), written in [Nim](https://nim-lang.org) — single static binary (~400 kB), zero external dependencies.
+Ultra‑light drop‑in replacement for Prometheus [node_exporter](https://github.com/prometheus/node_exporter), written in [Nim](https://nim-lang.org) and compiled into a single static binary with zero external dependencies.
 
 A minimal, high‑performance implementation of the standard `node_exporter` metrics with extremely low memory and CPU usage. Ideal for resource‑constrained systems, embedded devices, and environments where a compact, easy‑to‑distribute exporter is required.
 
@@ -20,12 +20,12 @@ A minimal, high‑performance implementation of the standard `node_exporter` met
 
 ---
 
-## Official node_exporter vs this lite version
+## Official node_exporter vs lite version
 
 | Aspect         | Node Exporter (official)       | node_exporter-lite          |
 | -------------- | ------------------------------ | --------------------------- |
 | Language       | Go                             | Nim                         |
-| Binary size    | ~22 MB                         | ~400 kB                     |
+| Binary size    | ~22 MB                         | ~500 kB                     |
 | Footprint      | ~23 MB                         | < 1 MB                      |
 | Collectors     | Many (modular, configurable)   | fixed                       |
 | Configuration  | Extensive flags                | Little to none              |
