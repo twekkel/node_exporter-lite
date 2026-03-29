@@ -1,5 +1,3 @@
-[README.md](https://github.com/user-attachments/files/26249566/README.md)
-
 [![main](https://github.com/twekkel/node_exporter-lite/actions/workflows/ci.yml/badge.svg)](https://github.com/twekkel/node_exporter-lite/actions/workflows/ci.yml)
 
 # Node Exporter Lite
