@@ -7,7 +7,7 @@ RUN nimble install -y zippy
 COPY node_exporter.nim .
 
 # Compile binary
-RUN nim c -d:release --mm:arc --opt:speed --define:lto --passC:"-flto -march=native" --passL:"-flto -static -s" node_exporter.nim
+RUN nim c -d:release --mm:arc --opt:speed --define:lto --passC:"-flto" --passL:"-flto -static -s" node_exporter.nim
 
 # Build binary only
 FROM scratch AS binary
