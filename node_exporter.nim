@@ -8,14 +8,12 @@ const
   DefaultMetric = "text/plain; version=0.0.4"
   NoSniff       = ("x-content-type-options", "nosniff")
 
-  # Pre-built label strings for pressure — known at compile time
   PressureLabelsCpuSome    = "resource=\"cpu\",type=\"some\""
   PressureLabelsMemSome    = "resource=\"memory\",type=\"some\""
   PressureLabelsMemFull    = "resource=\"memory\",type=\"full\""
   PressureLabelsIoSome     = "resource=\"io\",type=\"some\""
   PressureLabelsIoFull     = "resource=\"io\",type=\"full\""
 
-  # CPU mode label strings — known at compile time
   CpuModeUser    = "mode=\"user\""
   CpuModeNice    = "mode=\"nice\""
   CpuModeSystem  = "mode=\"system\""
@@ -65,7 +63,6 @@ onSignal(SIGINT, SIGTERM):
 # --- Helpers ---
 
 # Reads /proc or /sys file directly into a buffer; returns slice length or -1
-# Avoids allocating a full `string` via readFile for small files
 proc readProcInto(path: string, rootPath: string, buf: var array[4096, char]): int =
   let cleanPath = if path[0] == '/': path[1..^1] else: path
   let fullPath  = rootPath / cleanPath
@@ -157,7 +154,6 @@ proc getMetrics(rootPath: var string): string =
       "Labeled system information as provided by the uname system call", "1", ul)
 
   # ── LOAD AVG ──────────────────────────────────────────────────────────────
-  # /proc/loadavg is tiny; use low-level read
   let loadLen = readProcInto("/proc/loadavg", rootPath, buf)
   if loadLen > 0:
     let loadStr = bufToString(buf, loadLen)
@@ -237,9 +233,6 @@ proc getMetrics(rootPath: var string): string =
   except CatchableError: discard
 
   # ── DISK I/O ──────────────────────────────────────────────────────────────
-  # Two-pass over statsList avoided: emit read+write per device immediately,
-  # but Prometheus convention requires all series of same metric together.
-  # Keep seq but emit both metrics in one loop over statsList (one pass).
   type DiskData = tuple[dev, read, write: string]
   var diskList: seq[DiskData]
   try:
@@ -328,8 +321,6 @@ proc getMetrics(rootPath: var string): string =
   except CatchableError: discard
 
   # ── NETWORK ───────────────────────────────────────────────────────────────
-  # Re-use a single seq; read all stats per device before moving to next
-  # (better filesystem locality than metric-outer/device-inner)
   var interfaces: seq[string]
   listInterfaces(rootPath, interfaces)
 
@@ -364,8 +355,6 @@ proc getMetrics(rootPath: var string): string =
 
   # ── PRESSURE (PSI) ────────────────────────────────────────────────────────
   # Read each /proc/pressure/<res> file ONCE and parse all fields in one pass.
-  # Buffer by metric index so output is grouped by metric name —
-  # required for 100% correct Prometheus text format.
   const pressureRes = ["cpu", "memory", "io"]
   const avgFields   = ["avg10=", "avg60=", "avg300=", "total="]
   const avgMetrics  = ["node_pressure_avg10", "node_pressure_avg60",
@@ -376,7 +365,6 @@ proc getMetrics(rootPath: var string): string =
                        "Total stall time"]
   const avgTypes    = ["gauge", "gauge", "gauge", "counter"]
 
-  # Pre-built label table: [res_index][0=some, 1=full]
   const pressureLabels: array[3, array[2, string]] = [
     [PressureLabelsCpuSome, ""],
     [PressureLabelsMemSome, PressureLabelsMemFull],
