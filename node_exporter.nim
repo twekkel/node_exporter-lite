@@ -178,14 +178,14 @@ proc getMetrics(rootPath: var string): string =
     m.metricLine("node_entropy_pool_size_bits", "gauge",
       "Bits of entropy pool size", bufToString(buf, epLen))
 
-  # ── MEMORY ────────────────────────────────────────────────────────────────
-  # Use line iterator — no full-file string needed
+  # ── MEMORY & SWAP ─────────────────────────────────────────────────────────
   const targetKeys = ["MemTotal", "MemFree", "MemAvailable", "Buffers",
-                      "Cached",   "Active",  "Inactive"]
+                      "Cached",   "Active",  "Inactive",
+                      "SwapTotal", "SwapFree", "SwapCached"]
   try:
     var found = 0
     for line in lines(rootPath & "/proc/meminfo"):
-      if found == targetKeys.len: break     # stop early once all found
+      if found == targetKeys.len: break
       let p = line.splitWhitespace()
       if p.len < 2: continue
       let key = p[0].strip(chars = {':'})
@@ -195,7 +195,7 @@ proc getMetrics(rootPath: var string): string =
           try:
             let bytes = parseInt(p[1]) * 1024
             m.metricLine("node_memory_" & key & "_bytes", "gauge",
-              "Memory information field " & key, $bytes)
+              "Memory/Swap information field " & key, $bytes)
           except: discard
           break
   except CatchableError: discard
