@@ -175,9 +175,12 @@ proc getMetrics(rootPath: var string): string =
       "Bits of entropy pool size", bufToString(buf, epLen))
 
   # ── MEMORY & SWAP ─────────────────────────────────────────────────────────
-  const targetKeys = ["MemTotal", "MemFree", "MemAvailable", "Buffers",
-                      "Cached",   "Active",  "Inactive",
-                      "SwapTotal", "SwapFree", "SwapCached"]
+  const targetKeys = [
+    "Active", "Buffers", "Cached", "Inactive",
+    "MemAvailable", "MemFree", "MemTotal",
+    "Slab", "SwapCached", "SwapFree", "SwapTotal"
+  ]
+
   try:
     var found = 0
     for line in lines(rootPath & "/proc/meminfo"):
