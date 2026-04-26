@@ -194,7 +194,7 @@ proc getMetrics(rootPath: var string): string =
           try:
             let bytes = parseInt(p[1]) * 1024
             m.metricLine("node_memory_" & key & "_bytes", "gauge",
-              "Memory/Swap information field " & key, $bytes)
+              "Memory information field " & key, $bytes)
           except: discard
           break
   except CatchableError: discard
