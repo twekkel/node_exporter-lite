@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    tags: [ "v*" ]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            binary_suffix: amd64
+          - platform: linux/arm64
+            binary_suffix: arm64
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v4
+
+    - name: Build (${{ matrix.platform }})
+      run: |
+        podman build --platform ${{ matrix.platform }} --target binary -o . .
+        mv node_exporter node_exporter-${{ matrix.binary_suffix }}
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: node_exporter-${{ matrix.binary_suffix }}
+        path: node_exporter-${{ matrix.binary_suffix }}
+
+  publish:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Prepare & checksum
+      run: |
+        find artifacts -name 'node_exporter-*' -exec cp {} . \;
+        sha256sum node_exporter-amd64 node_exporter-arm64 > checksums.txt
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v3
+      with:
+        name: Release ${{ github.ref_name }}
+        generate_release_notes: true
+        files: |
+          node_exporter-amd64
+          node_exporter-arm64
+          checksums.txt
