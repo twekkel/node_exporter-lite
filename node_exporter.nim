@@ -1,7 +1,7 @@
 import asynchttpserver, asyncdispatch, logging, os, parseopt, posix, sets, strformat, strutils, zippy
 
 const nimVer = NimVersion
-const expVer = "0.9.0"
+const expVer = "1.0.0"
 
 const
   DefaultHTML   = "text/html; charset=utf-8"
