@@ -18,10 +18,10 @@ jobs:
             binary_suffix: arm64
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
+      uses: docker/setup-qemu-action@v4
 
     - name: Build (${{ matrix.platform }})
       run: |
@@ -29,7 +29,7 @@ jobs:
         mv node_exporter node_exporter-${{ matrix.binary_suffix }}
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: node_exporter-${{ matrix.binary_suffix }}
         path: node_exporter-${{ matrix.binary_suffix }}
@@ -52,7 +52,7 @@ jobs:
         sha256sum node_exporter-amd64 node_exporter-arm64 > checksums.txt
 
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         name: Release ${{ github.ref_name }}
         generate_release_notes: true
