@@ -178,7 +178,7 @@ proc getMetrics(rootPath: var string): string =
   const targetKeys = [
     "Active", "Buffers", "Cached", "Inactive",
     "MemAvailable", "MemFree", "MemTotal",
-    "Slab", "SwapCached", "SwapFree", "SwapTotal"
+    "SReclaimable", "SwapCached", "SwapFree", "SwapTotal"
   ]
 
   try:
