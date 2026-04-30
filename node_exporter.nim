@@ -453,7 +453,7 @@ proc main() {.async.} =
 
   proc cb(req: Request) {.async.} =
     let path = req.url.path
-    if path == "/" or path == "/health":
+    if path == "/health":
       await req.respond(Http200, "OK\n", genericHeaders)
     elif path == "/metrics":
       let raw = getMetrics(rootPath)
