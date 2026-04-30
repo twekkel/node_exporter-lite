@@ -53,7 +53,7 @@ let clkTick = sysconf(SC_CLK_TCK).float
 
 # --- Signals ---
 proc handleSignal(sig: cint) {.noconv.} =
-  stdout.writeLine "\nINFO: Received signal " & $sig & ". Exiting cleanly..."
+  stdout.writeLine &"\nINFO: Received signal {sig}. Exiting cleanly..."
   flushFile(stdout)
   quit(0)
 
@@ -138,7 +138,7 @@ proc getMetrics(rootPath: var string): string =
   # ── VERSION ──────────────────────────────────────────────────────────────
   m.metricLine("node_exporter_build_info", "gauge",
     "A metric with a constant '1' value labeled by version, and nimversion",
-    "1", "version=\"" & expVer & "\",nimversion=\"" & nimVer & "\"")
+    "1", &"version=\"{expVer}\",nimversion=\"{nimVer}\"")
 
   # ── UNAME ─────────────────────────────────────────────────────────────────
   var uts: Utsname
@@ -193,8 +193,8 @@ proc getMetrics(rootPath: var string): string =
           inc found
           try:
             let bytes = parseInt(p[1]) * 1024
-            m.metricLine("node_memory_" & key & "_bytes", "gauge",
-              "Memory information field " & key, $bytes)
+            m.metricLine(&"node_memory_{key}_bytes", "gauge",
+              &"Memory information field {key}", $bytes)
           except: discard
           break
   except CatchableError: discard
@@ -250,10 +250,10 @@ proc getMetrics(rootPath: var string): string =
 
   for s in diskList:
     m.metricLine("node_disk_read_bytes_total", "counter",
-      "Total bytes read from disk", s.read, "device=\"" & s.dev & "\"")
+      "Total bytes read from disk", s.read, &"""device="{s.dev}"""" )
   for s in diskList:
     m.metricLine("node_disk_written_bytes_total", "counter",
-      "Total bytes written to disk", s.write, "device=\"" & s.dev & "\"")
+      "Total bytes written to disk", s.write, &"""device="{s.dev}"""" )
 
   # ── FILE DESCRIPTORS ──────────────────────────────────────────────────────
   let fnrLen = readProcInto("/proc/sys/fs/file-nr", rootPath, buf)
@@ -344,10 +344,10 @@ proc getMetrics(rootPath: var string): string =
   var netBuf: array[netStats.len, seq[NetVal]]
 
   for dev in interfaces:
-    let devLabel = "device=\"" & dev & "\""
+    let devLabel = &"""device="{dev}""""
     let statsDir = rootPath / "sys/class/net" / dev / "statistics"
     for i, (file, _, _, _) in netStats:
-      let n = readProcInto("/" & statsDir[rootPath.len..^1] & "/" & file, rootPath, buf)
+      let n = readProcInto(&"/{statsDir[rootPath.len..^1]}/{file}", rootPath, buf)
       if n > 0:
         netBuf[i].add((devLabel, bufToString(buf, n)))
 
