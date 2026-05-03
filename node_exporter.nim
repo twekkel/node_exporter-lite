@@ -465,8 +465,7 @@ proc main() {.async.} =
       await req.respond(Http200, IndexPage, htmlHeaders)
 
   info("Starting Node Exporter Lite ", expVer, "\n",
-       "Listening on http://", address, ":", port, "\n",
-       "Metrics available at /metrics")
+       "Metrics available at http://", address, ":", port, "/metrics")
   await server.serve(Port(port), cb, address)
 
 waitFor main()
