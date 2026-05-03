@@ -43,8 +43,9 @@ const IndexPage = """<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><title>Node Exporter Lite</title></head>
 <body>
-  <h1>Node Exporter Lite</h1>
+  <h1>Node Exporter Lite """ & expVer & """</h1>
   <p><a href="/metrics">Metrics</a></p>
+  <p><a href="/health">Health</a></p>
 </body>
 </html>
 """
