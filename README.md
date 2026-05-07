@@ -1,4 +1,5 @@
 [![main](https://github.com/twekkel/node_exporter-lite/actions/workflows/ci.yml/badge.svg)](https://github.com/twekkel/node_exporter-lite/actions/workflows/ci.yml)
+[![Release](https://github.com/twekkel/node_exporter-lite/actions/workflows/release.yml/badge.svg)](https://github.com/twekkel/node_exporter-lite/actions/workflows/release.yml)
 
 # Node Exporter Lite
 
