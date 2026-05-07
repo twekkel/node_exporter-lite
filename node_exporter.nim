@@ -1,11 +1,13 @@
 import asynchttpserver, asyncdispatch, logging, os, parseopt, posix, sets, strformat, strutils, zippy
 
-const nimVer = NimVersion
-const expVer = "1.0.0"
-
 const
-  DefaultHTML   = "text/html; charset=utf-8"
-  DefaultMetric = "text/plain; version=0.0.4"
+  expVer = "1.0.0"
+  nimVer = NimVersion
+
+  DefaultMetric = "text/plain; version=0.0.4; charset=utf-8"
+  HTMLText      = "text/html; charset=utf-8"
+  PlainText     = "text/plain; charset=utf-8"
+  Gzip          = ("content-encoding", "gzip")
   NoSniff       = ("x-content-type-options", "nosniff")
 
   PressureLabelsCpuSome    = "resource=\"cpu\",type=\"some\""
@@ -23,22 +25,6 @@ const
   CpuModeSoftirq = "mode=\"softirq\""
   CpuModeSteal   = "mode=\"steal\""
 
-proc createHeaders(contentType: string, isGzip: bool = false): HttpHeaders =
-  result = newHttpHeaders([("content-type", contentType), NoSniff])
-  if isGzip:
-    result.add("content-encoding", "gzip")
-
-var
-  htmlHeaders    {.threadvar.}: HttpHeaders
-  genericHeaders {.threadvar.}: HttpHeaders
-  gzipHeaders    {.threadvar.}: HttpHeaders
-  noGzipHeaders  {.threadvar.}: HttpHeaders
-
-htmlHeaders    = createHeaders(DefaultHTML)
-genericHeaders = createHeaders("text/plain; charset=utf-8")
-gzipHeaders    = createHeaders(DefaultMetric, isGzip = true)
-noGzipHeaders  = createHeaders(DefaultMetric)
-
 const IndexPage = """<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><title>Node Exporter Lite</title></head>
@@ -54,15 +40,14 @@ let clkTick = sysconf(SC_CLK_TCK).float
 
 # --- Signals ---
 proc handleSignal(sig: cint) {.noconv.} =
-  stdout.writeLine &"\nINFO: Received signal {sig}. Exiting cleanly..."
+  stdout.writeLine "\nINFO: Received signal " & $sig & ". Exiting cleanly..."
   flushFile(stdout)
   quit(0)
 
-onSignal(SIGINT, SIGTERM):
-  handleSignal(sig)
+discard signal(SIGINT,  handleSignal)
+discard signal(SIGTERM, handleSignal)
 
 # --- Helpers ---
-
 # Reads /proc or /sys file directly into a buffer; returns slice length or -1
 proc readProcInto(path: string, rootPath: string, buf: var array[4096, char]): int =
   let cleanPath = if path[0] == '/': path[1..^1] else: path
@@ -139,7 +124,7 @@ proc getMetrics(rootPath: var string): string =
   # ── VERSION ──────────────────────────────────────────────────────────────
   m.metricLine("node_exporter_build_info", "gauge",
     "A metric with a constant '1' value labeled by version, and nimversion",
-    "1", &"version=\"{expVer}\",nimversion=\"{nimVer}\"")
+    "1", "version=\"" & expVer & "\",nimversion=\"" & nimVer & "\"")
 
   # ── UNAME ─────────────────────────────────────────────────────────────────
   var uts: Utsname
@@ -175,7 +160,7 @@ proc getMetrics(rootPath: var string): string =
     m.metricLine("node_entropy_pool_size_bits", "gauge",
       "Bits of entropy pool size", bufToString(buf, epLen))
 
-  # ── MEMORY & SWAP ─────────────────────────────────────────────────────────
+  # ── MEMORY ────────────────────────────────────────────────────────────────
   const targetKeys = [
     "Active", "Buffers", "Cached", "Inactive",
     "MemAvailable", "MemFree", "MemTotal",
@@ -194,8 +179,8 @@ proc getMetrics(rootPath: var string): string =
           inc found
           try:
             let bytes = parseInt(p[1]) * 1024
-            m.metricLine(&"node_memory_{key}_bytes", "gauge",
-              &"Memory information field {key}", $bytes)
+            m.metricLine("node_memory_" & key & "_bytes", "gauge",
+              "Memory information field " & key, $bytes)
           except: discard
           break
   except CatchableError: discard
@@ -251,10 +236,10 @@ proc getMetrics(rootPath: var string): string =
 
   for s in diskList:
     m.metricLine("node_disk_read_bytes_total", "counter",
-      "Total bytes read from disk", s.read, &"""device="{s.dev}"""" )
+      "Total bytes read from disk", s.read, "device=\"" & s.dev & "\"")
   for s in diskList:
     m.metricLine("node_disk_written_bytes_total", "counter",
-      "Total bytes written to disk", s.write, &"""device="{s.dev}"""" )
+      "Total bytes written to disk", s.write, "device=\"" & s.dev & "\"")
 
   # ── FILE DESCRIPTORS ──────────────────────────────────────────────────────
   let fnrLen = readProcInto("/proc/sys/fs/file-nr", rootPath, buf)
@@ -345,10 +330,10 @@ proc getMetrics(rootPath: var string): string =
   var netBuf: array[netStats.len, seq[NetVal]]
 
   for dev in interfaces:
-    let devLabel = &"""device="{dev}""""
+    let devLabel = "device=\"" & dev & "\""
     let statsDir = rootPath / "sys/class/net" / dev / "statistics"
     for i, (file, _, _, _) in netStats:
-      let n = readProcInto(&"/{statsDir[rootPath.len..^1]}/{file}", rootPath, buf)
+      let n = readProcInto("/" & statsDir[rootPath.len..^1] & "/" & file, rootPath, buf)
       if n > 0:
         netBuf[i].add((devLabel, bufToString(buf, n)))
 
@@ -427,10 +412,18 @@ Options:
 # --- Server ---
 proc main() {.async.} =
   const compressionLevel = BestSpeed
-  var address  = "0.0.0.0"
-  var port     = 9100
-  var rootPath = "/"
-  var p        = initOptParser()
+
+  let
+    htmlHeaders    = newHttpHeaders([("content-type", HTMLText), NoSniff])
+    genericHeaders = newHttpHeaders([("content-type", PlainText), NoSniff])
+    gzipHeaders    = newHttpHeaders([("content-type", DefaultMetric), NoSniff, Gzip])
+    noGzipHeaders  = newHttpHeaders([("content-type", DefaultMetric), NoSniff])
+
+  var
+    address  = "0.0.0.0"
+    port     = 9100
+    rootPath = "/"
+    p        = initOptParser()
 
   for kind, key, val in p.getopt():
     case kind
@@ -450,7 +443,7 @@ proc main() {.async.} =
 
   addHandler(newConsoleLogger(fmtStr = "$levelname: "))
 
-  var server = newAsyncHttpServer()
+  let server = newAsyncHttpServer()
 
   proc cb(req: Request) {.async.} =
     let path = req.url.path
