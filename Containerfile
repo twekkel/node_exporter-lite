@@ -1,13 +1,18 @@
-FROM docker.io/nimlang/nim:2.2.6-alpine-regular AS builder
+FROM docker.io/nimlang/nim:2.2.10 AS builder
 
-RUN apk add --no-cache gcc musl-dev
+RUN DEBIAN_FRONTEND=noninteractive \
+  apt-get update && apt-get install -y \
+  musl \
+  musl-dev \
+  musl-tools \
+  --no-install-recommends
 
 WORKDIR /app
 RUN nimble install -y zippy
 COPY node_exporter.nim .
 
 # Compile binary
-RUN nim c -d:release --mm:arc --opt:speed --define:lto --passC:"-flto" --passL:"-flto -static -s" node_exporter.nim
+RUN nim c -d:release --gcc.exe:musl-gcc --gcc.linkerexe:musl-gcc --mm:arc --opt:speed --define:lto --passC:"-flto" --passL:"-flto -static -s" node_exporter.nim
 
 # Build binary only
 FROM scratch AS binary
