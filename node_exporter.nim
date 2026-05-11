@@ -25,13 +25,13 @@ const
   CpuModeSoftirq = "mode=\"softirq\""
   CpuModeSteal   = "mode=\"steal\""
 
-const IndexPage = """<!DOCTYPE html>
+const IndexPage = &"""<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><title>Node Exporter Lite</title></head>
 <body>
-  <h1>Node Exporter Lite """ & expVer & """</h1>
-  <p><a href="/metrics">Metrics</a></p>
+  <h1>Node Exporter Lite {expVer}</h1>
   <p><a href="/health">Health</a></p>
+  <p><a href="/metrics">Metrics</a></p>
 </body>
 </html>
 """
@@ -397,7 +397,7 @@ proc getMetrics(rootPath: var string): string =
 
 # --- Usage ---
 proc displayUsage() =
-  let usageText = fmt"""
+  const UsageText = &"""
 Node Exporter Lite {expVer}
 Usage: ./node_exporter [options]
 
@@ -406,7 +406,7 @@ Options:
   --path.rootfs=/host           Path to the real host root filesystem (default: /)
   --help                        Show this help message
 """
-  echo usageText
+  echo UsageText
   quit(0)
 
 # --- Server ---
