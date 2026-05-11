@@ -4,9 +4,9 @@ const
   expVer = "1.0.1"
   nimVer = NimVersion
 
-  DefaultMetric = "text/plain; version=0.0.4; charset=utf-8"
-  HTMLText      = "text/html; charset=utf-8"
-  PlainText     = "text/plain; charset=utf-8"
+  DefaultMetric = ("content-type", "text/plain; version=0.0.4; charset=utf-8")
+  HTMLText      = ("content-type", "text/html; charset=utf-8")
+  PlainText     = ("content-type", "text/plain; charset=utf-8")
   Gzip          = ("content-encoding", "gzip")
   NoSniff       = ("x-content-type-options", "nosniff")
 
@@ -414,10 +414,10 @@ proc main() {.async.} =
   const compressionLevel = BestSpeed
 
   let
-    htmlHeaders    = newHttpHeaders([("content-type", HTMLText), NoSniff])
-    genericHeaders = newHttpHeaders([("content-type", PlainText), NoSniff])
-    gzipHeaders    = newHttpHeaders([("content-type", DefaultMetric), NoSniff, Gzip])
-    noGzipHeaders  = newHttpHeaders([("content-type", DefaultMetric), NoSniff])
+    htmlHeaders    = newHttpHeaders([HTMLText, NoSniff])
+    genericHeaders = newHttpHeaders([PlainText, NoSniff])
+    gzipHeaders    = newHttpHeaders([DefaultMetric, NoSniff, Gzip])
+    noGzipHeaders  = newHttpHeaders([DefaultMetric, NoSniff])
 
   var
     address  = "0.0.0.0"
