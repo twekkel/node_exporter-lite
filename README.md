@@ -100,9 +100,10 @@ Run it with:
 
 | Flag | Description |
 |------|-------------|
+| `--collector.cpu.percpu`           | Enable per-CPU metrics in addition to the aggregate |
+| `--help`                           | Show this help message |
+| `--path.rootfs=<path>`             | Path to the real host root filesystem (default: `/`) |
 | `--web.listen-address=[ADDR]:PORT` | Address and port to listen on (default: `0.0.0.0:9100`) |
-| `--path.rootfs=/host` | Path to the real host root filesystem (default: `/`) |
-| `--help` | Show this help message |
 
 ### See also
 
