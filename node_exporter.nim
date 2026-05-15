@@ -25,7 +25,7 @@ const
   CpuModeSoftirq = "mode=\"softirq\""
   CpuModeSteal   = "mode=\"steal\""
 
-const IndexPage = &"""<!DOCTYPE html>
+  IndexPage = &"""<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><title>Node Exporter Lite</title></head>
 <body>
@@ -37,6 +37,9 @@ const IndexPage = &"""<!DOCTYPE html>
 """
 
 let clkTick = sysconf(SC_CLK_TCK).float
+
+type CollectorConfig = object
+  perCpu*: bool
 
 # --- Signals ---
 proc handleSignal(sig: cint) {.noconv.} =
@@ -116,7 +119,7 @@ proc metricLine(m: var string, name, mtype, help, value: string) {.inline.} =
   metricLine(m, name, mtype, help, value, "")
 
 # --- Metrics ---
-proc getMetrics(rootPath: var string): string =
+proc getMetrics(rootPath: var string, cfg: CollectorConfig): string =
   seenMetrics.clear()
   var m = newStringOfCap(16384)
   var buf: array[4096, char]
@@ -196,16 +199,18 @@ proc getMetrics(rootPath: var string): string =
       case p[0]
       of "cpu":
         if p.len < 9: continue
-        const h = "Seconds the CPU spent in each mode"
-        const t = "counter"
-        m.metricLine("node_cpu_seconds_total", t, h, $(p[1].parseFloat / clkTick), CpuModeUser)
-        m.metricLine("node_cpu_seconds_total", t, h, $(p[2].parseFloat / clkTick), CpuModeNice)
-        m.metricLine("node_cpu_seconds_total", t, h, $(p[3].parseFloat / clkTick), CpuModeSystem)
-        m.metricLine("node_cpu_seconds_total", t, h, $(p[4].parseFloat / clkTick), CpuModeIdle)
-        m.metricLine("node_cpu_seconds_total", t, h, $(p[5].parseFloat / clkTick), CpuModeIowait)
-        m.metricLine("node_cpu_seconds_total", t, h, $(p[6].parseFloat / clkTick), CpuModeIrq)
-        m.metricLine("node_cpu_seconds_total", t, h, $(p[7].parseFloat / clkTick), CpuModeSoftirq)
-        m.metricLine("node_cpu_seconds_total", t, h, $(p[8].parseFloat / clkTick), CpuModeSteal)
+        if not cfg.perCpu:
+          const h = "Seconds the CPU spent in each mode"
+          const t = "counter"
+          m.metricLine("node_cpu_seconds_total", t, h, $(p[1].parseFloat / clkTick), CpuModeUser)
+          m.metricLine("node_cpu_seconds_total", t, h, $(p[2].parseFloat / clkTick), CpuModeNice)
+          m.metricLine("node_cpu_seconds_total", t, h, $(p[3].parseFloat / clkTick), CpuModeSystem)
+          m.metricLine("node_cpu_seconds_total", t, h, $(p[4].parseFloat / clkTick), CpuModeIdle)
+          m.metricLine("node_cpu_seconds_total", t, h, $(p[5].parseFloat / clkTick), CpuModeIowait)
+          m.metricLine("node_cpu_seconds_total", t, h, $(p[6].parseFloat / clkTick), CpuModeIrq)
+          m.metricLine("node_cpu_seconds_total", t, h, $(p[7].parseFloat / clkTick), CpuModeSoftirq)
+          m.metricLine("node_cpu_seconds_total", t, h, $(p[8].parseFloat / clkTick), CpuModeSteal)
+
       of "intr":
         m.metricLine("node_intr_total", "counter", "Total number of interrupts serviced", p[1])
       of "ctxt":
@@ -218,7 +223,23 @@ proc getMetrics(rootPath: var string): string =
         m.metricLine("node_procs_running", "gauge", "Number of processes in runnable state", p[1])
       of "procs_blocked":
         m.metricLine("node_procs_blocked", "gauge", "Number of processes blocked waiting for I/O", p[1])
-      else: discard
+
+      else:
+          if cfg.perCpu and p[0].len > 3 and p[0].startsWith("cpu") and
+             p[0][3] in {'0'..'9'} and p.len >= 9:
+            const h = "Seconds the CPU spent in each mode"
+            const t = "counter"
+            let cpuId = p[0][3..^1]   # "0", "1", "2", …
+            template cpuLabel(mode: string): string =
+              "cpu=\"" & cpuId & "\"," & mode
+            m.metricLine("node_cpu_seconds_total", t, h, $(p[1].parseFloat / clkTick), cpuLabel(CpuModeUser))
+            m.metricLine("node_cpu_seconds_total", t, h, $(p[2].parseFloat / clkTick), cpuLabel(CpuModeNice))
+            m.metricLine("node_cpu_seconds_total", t, h, $(p[3].parseFloat / clkTick), cpuLabel(CpuModeSystem))
+            m.metricLine("node_cpu_seconds_total", t, h, $(p[4].parseFloat / clkTick), cpuLabel(CpuModeIdle))
+            m.metricLine("node_cpu_seconds_total", t, h, $(p[5].parseFloat / clkTick), cpuLabel(CpuModeIowait))
+            m.metricLine("node_cpu_seconds_total", t, h, $(p[6].parseFloat / clkTick), cpuLabel(CpuModeIrq))
+            m.metricLine("node_cpu_seconds_total", t, h, $(p[7].parseFloat / clkTick), cpuLabel(CpuModeSoftirq))
+            m.metricLine("node_cpu_seconds_total", t, h, $(p[8].parseFloat / clkTick), cpuLabel(CpuModeSteal))
   except CatchableError: discard
 
   # ── DISK I/O ──────────────────────────────────────────────────────────────
@@ -415,8 +436,9 @@ Node Exporter Lite {expVer}
 Usage: ./node_exporter [options]
 
 Options:
-  --web.listen-address=:9100    Address and port to listen on (default: 0.0.0.0:9100)
+  --collector.cpu.percpu        Expose per-CPU metrics in addition to the aggregate (default: false)
   --path.rootfs=/host           Path to the real host root filesystem (default: /)
+  --web.listen-address=:9100    Address and port to listen on (default: 0.0.0.0:9100)
   --help                        Show this help message
 """
   echo UsageText
@@ -433,6 +455,7 @@ proc main() {.async.} =
     noGzipHeaders  = newHttpHeaders([DefaultMetric, NoSniff])
 
   var
+    cfg : CollectorConfig
     address  = "0.0.0.0"
     port     = 9100
     rootPath = "/"
@@ -443,14 +466,16 @@ proc main() {.async.} =
     of cmdEnd: break
     of cmdShortOption, cmdLongOption:
       case key
+      of "collector.cpu.percpu":
+        cfg.perCpu = val != "false"
+      of "path.rootfs":
+        if val.len > 0: rootPath = val
+        else: echo "Error: --path.rootfs requires a value"; quit(1)
       of "web.listen-address":
         if val.len > 0:
           try: (address, port) = parseListenAddress(val)
           except ValueError:
             echo "Error: '", val, "' is an invalid address/port"; quit(1)
-      of "path.rootfs":
-        if val.len > 0: rootPath = val
-        else: echo "Error: --path.rootfs requires a value"; quit(1)
       else: displayUsage()
     of cmdArgument: displayUsage()
 
@@ -463,7 +488,7 @@ proc main() {.async.} =
     if path == "/health":
       await req.respond(Http200, "OK\n", genericHeaders)
     elif path == "/metrics":
-      let raw = getMetrics(rootPath)
+      let raw = getMetrics(rootPath, cfg)
       if req.headers.hasKey("Accept-Encoding") and "gzip" in req.headers["Accept-Encoding"]:
         await req.respond(Http200, compress(raw, compressionLevel, dfGzip), gzipHeaders)
       else:
