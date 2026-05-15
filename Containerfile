@@ -1,14 +1,14 @@
 FROM docker.io/nimlang/nim:2.2.10 AS builder
 
-RUN DEBIAN_FRONTEND=noninteractive \
-  apt-get update && apt-get install -y \
+RUN apt-get update && \
+  DEBIAN_FRONTEND=noninteractive apt-get install -y \
   musl \
   musl-dev \
   musl-tools \
   --no-install-recommends
 
 WORKDIR /app
-RUN nimble install -y zippy
+RUN nimble refresh && nimble install -y zippy
 COPY node_exporter.nim .
 
 # Compile binary
