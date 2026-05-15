@@ -35,7 +35,7 @@ jobs:
 
     - name: Run test - loadavg
       run: |
-          curl --compressed -s http://localhost:9101/metrics | grep -E "node_load15 [0-9]\.[0.9]+"
+          curl --compressed -s http://localhost:9101/metrics | grep -E "node_load15 [0-9]\.[0-9]+"
 
     - name: Stop Daemon
       if: always()
