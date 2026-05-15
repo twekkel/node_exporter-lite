@@ -250,15 +250,17 @@ proc getMetrics(rootPath: var string): string =
       m.metricLine("node_filefd_maximum",   "gauge", "File descriptor statistics: maximum",   fnrParts[2])
 
   # ── FILESYSTEM ────────────────────────────────────────────────────────────
+  type FsVal = tuple[labels, val: string]
+  var fsAvail, fsSize, fsFree, fsFiles, fsFilesFree, fsReadonly: seq[FsVal]
+
   try:
     let mountContent = readProc("/proc/mounts", rootPath)
-    var seenMounts: HashSet[string]   # O(1) vs seq O(n)
+    var seenMounts: HashSet[string]
 
-    # Convert filter lists to sets for O(1) lookup
-    const unwantedFstypes    = toHashSet(["tmpfs","sysfs","proc","devtmpfs","devpts",
-                                          "mqueue","debugfs","securityfs","configfs","autofs"])
-    const unwantedDevParts   = ["loop", "ram"]
-    const unwantedMntParts   = ["containers", "docker", "kubelet", "podman"]
+    const
+      unwantedFstypes  = toHashSet(["autofs","configfs","debugfs","devpts","devtmpfs","mqueue","proc","securityfs","sysfs","tmpfs"])
+      unwantedDevParts = ["loop", "ram"]
+      unwantedMntParts = ["containers", "docker", "kubelet", "podman"]
 
     for line in mountContent.splitLines():
       let p = line.splitWhitespace()
@@ -287,27 +289,38 @@ proc getMetrics(rootPath: var string): string =
       let total = fsStats.f_blocks.uint64 * bsize
       if total == 0: continue
 
-      # Build label string once for all 6 filesystem metrics
-      var fl = newStringOfCap(128)
+      var fl = ""
       fl.add("device=\""); fl.add(dev)
       fl.add("\",mountpoint=\""); fl.add(mountpoint)
       fl.add("\",fstype=\""); fl.add(fstype); fl.add("\"")
 
-      m.metricLine("node_filesystem_avail_bytes", "gauge",
-        "Filesystem space available to non-root users in bytes",
-        $(fsStats.f_bavail.uint64 * bsize), fl)
-      m.metricLine("node_filesystem_size_bytes", "gauge",
-        "Total filesystem size in bytes", $total, fl)
-      m.metricLine("node_filesystem_free_bytes", "gauge",
-        "Filesystem free space in bytes", $(fsStats.f_bfree.uint64 * bsize), fl)
-      m.metricLine("node_filesystem_files", "gauge",
-        "Filesystem total file nodes", $fsStats.f_files.uint64, fl)
-      m.metricLine("node_filesystem_files_free", "gauge",
-        "Filesystem free file nodes", $fsStats.f_ffree.uint64, fl)
-      m.metricLine("node_filesystem_readonly", "gauge",
-        "Filesystem read-only status",
-        (if (culong(fsStats.f_flag) and culong(ST_RDONLY)) != 0: "1" else: "0"), fl)
+      fsAvail.add(    (fl, $(fsStats.f_bavail.uint64 * bsize)))
+      fsSize.add(     (fl, $total))
+      fsFree.add(     (fl, $(fsStats.f_bfree.uint64 * bsize)))
+      fsFiles.add(    (fl, $fsStats.f_files.uint64))
+      fsFilesFree.add((fl, $fsStats.f_ffree.uint64))
+      fsReadonly.add( (fl, if (culong(fsStats.f_flag) and culong(ST_RDONLY)) != 0: "1" else: "0"))
+
   except CatchableError: discard
+
+  for v in fsAvail:
+    m.metricLine("node_filesystem_avail_bytes", "gauge",
+      "Filesystem space available to non-root users in bytes", v.val, v.labels)
+  for v in fsSize:
+    m.metricLine("node_filesystem_size_bytes", "gauge",
+      "Total filesystem size in bytes", v.val, v.labels)
+  for v in fsFree:
+    m.metricLine("node_filesystem_free_bytes", "gauge",
+      "Filesystem free space in bytes", v.val, v.labels)
+  for v in fsFiles:
+    m.metricLine("node_filesystem_files", "gauge",
+      "Filesystem total file nodes", v.val, v.labels)
+  for v in fsFilesFree:
+    m.metricLine("node_filesystem_files_free", "gauge",
+      "Filesystem free file nodes", v.val, v.labels)
+  for v in fsReadonly:
+    m.metricLine("node_filesystem_readonly", "gauge",
+      "Filesystem read-only status", v.val, v.labels)
 
   # ── NETWORK ───────────────────────────────────────────────────────────────
   var interfaces: seq[string]
