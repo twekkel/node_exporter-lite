@@ -1,4 +1,4 @@
-FROM docker.io/nimlang/nim:2.2.10 AS builder
+FROM docker.io/nimlang/nim:2.2.12 AS builder
 RUN apt-get update && \
   DEBIAN_FRONTEND=noninteractive apt-get install -y \
     musl \
