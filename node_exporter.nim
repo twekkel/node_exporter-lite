@@ -1,4 +1,4 @@
-import asynchttpserver, asyncdispatch, logging, os, parseopt, posix, sets, strformat, strutils, zippy
+import algorithm, asynchttpserver, asyncdispatch, logging, os, parseopt, posix, sets, strformat, strutils, zippy
 
 const
   expVer = "1.0.3"
@@ -40,6 +40,7 @@ let clkTick = sysconf(SC_CLK_TCK).float
 
 type CollectorConfig = object
   perCpu*: bool
+  textfileDir*: string
 
 # --- Signals ---
 proc handleSignal(sig: cint) {.noconv.} =
@@ -117,6 +118,25 @@ proc metricLine(m: var string, name, mtype, help, value, labels: string) {.inlin
 
 proc metricLine(m: var string, name, mtype, help, value: string) {.inline.} =
   metricLine(m, name, mtype, help, value, "")
+
+# --- Textfile collector ---
+# Appends all *.prom files in dir, sorted by name for deterministic output.
+# Collector is disabled unless a directory was given on the command line.
+proc collectTextfiles(m: var string, dir: string) =
+  var files: seq[string]
+  for kind, path in walkDir(dir):
+    if kind != pcFile: continue
+    if path.endsWith(".prom"): files.add(path)
+  if files.len == 0: return
+  sort(files)
+  for f in files:
+    try:
+      let content = readFile(f)
+      if content.len == 0: continue
+      m.add(content)
+      if content[^1] != '\n': m.add('\n')
+    except CatchableError:
+      warn("textfile: cannot read ", f)
 
 # --- Metrics ---
 proc getMetrics(rootPath: var string, cfg: CollectorConfig): string =
@@ -427,6 +447,10 @@ proc getMetrics(rootPath: var string, cfg: CollectorConfig): string =
     for entry in pressBuf[fi]:
       m.metricLine(avgMetrics[fi], avgTypes[fi], avgHelp[fi], entry.val, entry.labels)
 
+  # --- TEXTFILE ---
+  if cfg.textfileDir.len > 0:
+    collectTextfiles(m, cfg.textfileDir)
+
   return m
 
 # --- Usage ---
@@ -437,6 +461,8 @@ Usage: ./node_exporter [options]
 
 Options:
   --collector.cpu.percpu        Expose per-CPU metrics in addition to the aggregate (default: false)
+  --collector.textfile.directory=<path>
+                                Read *.prom files from this directory and expose them (default: disabled)
   --path.rootfs=/host           Path to the real host root filesystem (default: /)
   --web.listen-address=:9100    Address and port to listen on (default: 0.0.0.0:9100)
   --help                        Show this help message
@@ -468,6 +494,9 @@ proc main() {.async.} =
       case key
       of "collector.cpu.percpu":
         cfg.perCpu = val != "false"
+      of "collector.textfile.directory":
+        if val.len > 0: cfg.textfileDir = val
+        else: echo "Error: --collector.textfile.directory requires a value"; quit(1)
       of "path.rootfs":
         if val.len > 0: rootPath = val
         else: echo "Error: --path.rootfs requires a value"; quit(1)

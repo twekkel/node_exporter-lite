@@ -101,9 +101,16 @@ Run it with:
 | Flag | Description |
 |------|-------------|
 | `--collector.cpu.percpu`           | Enable per-CPU metrics in addition to the aggregate |
+| `--collector.textfile.directory=<path>` | Read `*.prom` files from this directory and expose them; disabled unless set |
 | `--help`                           | Show this help message |
 | `--path.rootfs=<path>`             | Path to the real host root filesystem (default: `/`) |
 | `--web.listen-address=[ADDR]:PORT` | Address and port to listen on (default: `0.0.0.0:9100`) |
+
+## Textfile collector
+
+Like the official node_exporter [textfile collector](https://github.com/prometheus/node_exporter#textfile-collector): pass a directory with `--collector.textfile.directory=<path>` and every `*.prom` file in it is appended to `/metrics` on each scrape. This lets cronjobs, scripts or any other program expose their own metrics by writing Prometheus text format files in the directory ```path```.
+
+Files are read on every scrape, sorted by name for deterministic output; unreadable or empty files are skipped.
 
 ### See also
 
