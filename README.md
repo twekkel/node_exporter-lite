@@ -68,7 +68,20 @@ To build a runnable container image for Podman or Docker, run:
 ```
 podman build -t node_exporter .
 ```
-Once the image is built, start it with:
+
+### Build a static binary for the host
+
+To produce a fully self‑contained static binary you can run directly on the host, build the image with:
+```
+podman build --target binary -o ./bin .
+```
+This places the compiled binary in ./bin.
+
+## Running
+
+### Container
+
+Start the image with:
 ```
 podman run \
   --detach \
@@ -84,17 +97,35 @@ This setup mounts the host’s /proc and /sys into the container so that the exp
 
 If you want the exporter to access host-level process information, you can add ```--pid=host```.
 
-### Build a static binary for the host
+### systemd
 
-To produce a fully self‑contained static binary you can run directly on the host, build the image with:
+For a long-lived host deployment, run the static binary under systemd. Copy the binary into place and create a minimal unit:
+
 ```
-podman build --target binary -o ./bin .
+install -m 755 bin/node_exporter /usr/local/bin/node_exporter
 ```
-This places the compiled binary in ./bin.
-Run it with:
+
+`/etc/systemd/system/node_exporter.service`:
+```ini
+[Unit]
+Description=Node Exporter Lite
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/node_exporter
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
 ```
-./bin/node_exporter
+
+Enable and start it:
 ```
+systemctl daemon-reload
+systemctl enable --now node_exporter
+```
+
+The unit is deliberately minimal; add flags to `ExecStart` as needed (see [Options](#options)) and harden it with the usual systemd sandboxing directives.
 
 ## Options
 
