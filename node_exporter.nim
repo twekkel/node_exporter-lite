@@ -525,8 +525,11 @@ proc main() {.async.} =
     else:
       await req.respond(Http200, IndexPage, htmlHeaders)
 
+  var textfileInfo = ""
+  if cfg.textfileDir.len > 0:
+    textfileInfo = "\nReading textfile metrics from " & cfg.textfileDir
   info("Starting Node Exporter Lite ", expVer, "\n",
-       "Metrics available at http://", address, ":", port, "/metrics")
+       "Metrics available at http://", address, ":", port, "/metrics", textfileInfo)
   await server.serve(Port(port), cb, address)
 
 waitFor main()
